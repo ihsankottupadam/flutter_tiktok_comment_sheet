@@ -11,7 +11,7 @@ class HomeScreen extends GetView<HomeScreenController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SheetSlider(
+      body: SliderSheet(
           controller: controller.sheetSliderController,
           maxSheetHeight: MediaQuery.of(context).size.height * 0.75,
           content: const TopWidget(),

@@ -1,27 +1,34 @@
-import 'dart:developer';
-
 import 'package:commet_sheet/screens/sheet_slider_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-class SheetSlider extends StatefulWidget {
-  const SheetSlider(
+class SliderSheet extends StatefulWidget {
+  const SliderSheet(
       {super.key,
       this.controller,
       required this.content,
       required this.sheet,
-      this.maxSheetHeight});
+      this.maxSheetHeight,
+      this.onExpand,
+      this.onCollapse,
+      this.backgroundColor});
 
-  final SheetSliderController? controller;
+  final SliderSheetController? controller;
   final double? maxSheetHeight;
   final Widget content;
   final Widget sheet;
+  final VoidCallback? onExpand;
+  final VoidCallback? onCollapse;
+  final Color? backgroundColor;
 
   @override
-  State<SheetSlider> createState() => SheetSliderState();
+  State<SliderSheet> createState() => SliderSheetState();
 }
 
-class SheetSliderState extends State<SheetSlider> {
+class SliderSheetState extends State<SliderSheet> {
   double sheetHeight = 0.0;
+
+  bool isExpanded = false;
 
   late double maxSheetHeight;
   late double dragCancelVelocity;
@@ -43,57 +50,89 @@ class SheetSliderState extends State<SheetSlider> {
     double minContentSize =
         MediaQuery.of(context).size.height - (widget.maxSheetHeight ?? 300);
     double position;
-    return GestureDetector(
-      onTap: () {
-        log('tap');
-      },
-      onVerticalDragDown: (details) {
-        setState(() {
-          isDragging = true;
-        });
-      },
-      onVerticalDragUpdate: (DragUpdateDetails details) {
-        position = details.globalPosition.dy;
 
-        if (position > minContentSize) {
-          double newH = screenHeight - position;
-          if (newH < 0) return;
-          setState(() {
-            sheetHeight = newH;
-          });
+    return WillPopScope(
+      onWillPop: () async {
+        if (isExpanded) {
+          collapse();
+          return false;
         }
+        return true;
       },
-      onVerticalDragEnd: (details) {
-        log('drag end');
-        // log('vel ${details.velocity.pixelsPerSecond}');
-        setState(() {
-          isDragging = false;
-          if (sheetHeight < dragCancelVelocity ||
-              details.velocity.pixelsPerSecond.dy > dragFastVelocity) {
-            collapse();
-          } else {
-            expand();
-          }
-        });
-      },
-      onVerticalDragCancel: () {
-        log('drag cancel');
-        setState(() {
-          isDragging = false;
-        });
-      },
-      child: Column(
-        children: [
-          Expanded(
-            child: FittedBox(child: widget.content),
-          ),
-          TweenAnimationBuilder(
-              duration: Duration(milliseconds: isDragging ? 0 : 200),
-              tween: Tween<double>(begin: 0, end: sheetHeight),
-              builder: (context, value, child) {
-                return SizedBox(height: value, child: widget.sheet);
-              })
-        ],
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragDown: isExpanded
+            ? (details) {
+                setState(() {
+                  isDragging = true;
+                });
+              }
+            : null,
+        onVerticalDragUpdate: isExpanded
+            ? (DragUpdateDetails details) {
+                position = details.globalPosition.dy;
+
+                if (position > minContentSize) {
+                  double newH = screenHeight - position;
+                  if (newH < 0) return;
+                  setState(() {
+                    sheetHeight = newH;
+                  });
+                }
+              }
+            : null,
+        onVerticalDragEnd: isExpanded
+            ? (details) {
+                setState(() {
+                  isDragging = false;
+                  if (sheetHeight < dragCancelVelocity ||
+                      details.velocity.pixelsPerSecond.dy > dragFastVelocity) {
+                    collapse();
+                  } else {
+                    expand();
+                  }
+                });
+              }
+            : null,
+        onVerticalDragCancel: isExpanded
+            ? () {
+                setState(() {
+                  isDragging = false;
+                });
+              }
+            : null,
+        onHorizontalDragDown: isExpanded ? (details) {} : null,
+        onHorizontalDragUpdate: isExpanded ? (details) {} : null,
+        onHorizontalDragEnd: isExpanded ? (details) {} : null,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              color: isExpanded ? widget.backgroundColor : null,
+            ),
+            Column(
+              children: [
+                Expanded(
+                  child:
+                      FittedBox(child: RepaintBoundary(child: widget.content)),
+                ),
+                TweenAnimationBuilder(
+                    duration: Duration(milliseconds: isDragging ? 0 : 200),
+                    tween: Tween<double>(begin: 0, end: sheetHeight),
+                    builder: (bContext, value, child) {
+                      return LayoutBuilder(builder: (innerContext, constrains) {
+                        return SizedBox(
+                            height: value -
+                                ((Get.mediaQuery.viewInsets.bottom / 2)
+                                    .clamp(0, value)),
+                            child:
+                                isExpanded ? widget.sheet : const SizedBox());
+                      });
+                    })
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -101,24 +140,24 @@ class SheetSliderState extends State<SheetSlider> {
   void expand() {
     setState(() {
       sheetHeight = maxSheetHeight;
+      isExpanded = true;
     });
+    widget.onExpand?.call();
   }
 
   void collapse() {
     setState(() {
       sheetHeight = 0;
+      isExpanded = false;
     });
+    widget.onCollapse?.call();
   }
 
   void toggle() {
     if (sheetHeight > 0) {
-      setState(() {
-        sheetHeight = 0;
-      });
+      collapse();
     } else {
-      setState(() {
-        sheetHeight = maxSheetHeight;
-      });
+      expand();
     }
   }
 }

@@ -1,7 +1,7 @@
-import 'sheet_slider.dart';
+import 'package:commet_sheet/screens/sheet_slider.dart';
 
-class SheetSliderController {
-  SheetSliderState? _state;
+class SliderSheetController {
+  SliderSheetState? _state;
   void expand() {
     state.expand();
   }
@@ -14,7 +14,9 @@ class SheetSliderController {
     state.toggle();
   }
 
-  SheetSliderState get state {
+  bool get isExpanded => state.isExpanded;
+
+  SliderSheetState get state {
     assert(
       _state != null,
       'Controller not attached to any SheetSlider. Did you forget to pass the controller to the SheetSlider?',
@@ -22,5 +24,5 @@ class SheetSliderController {
     return _state!;
   }
 
-  set state(SheetSliderState? value) => _state = value;
+  set state(SliderSheetState? value) => _state = value;
 }
